@@ -165,14 +165,14 @@
 
         function(error, dados) {
 
-          var dimensao = "todos"
+          var dimensao = "mediana"
 
           var colorScale = d3.scaleThreshold()
               .domain([0, 20, 50, 70, 100, 250, 400, 550, 800])
               .range([0].concat(colors));
 
           var cards = grafico.selectAll("rect")
-              .data(dados.filter(d => d.local == "todos"));
+              .data(dados.filter(d => d.local == "mediana"));
           ordenaTipos("06", dados, dimensao);
 
 
@@ -214,7 +214,7 @@
 
           }
 
-          const dataKeys = ["todos", "bobs", "burrinhos", "jackson"]
+          const dataKeys = ["mediana", "bobs", "burrinhos", "jackson"]
 
           d3.select("#controls").selectAll("button.teams")
             .data(dataKeys)
