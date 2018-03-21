@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="utf-8">
+  <title>Lab 2 - Última parte</title>
+  <script src="https://d3js.org/d3.v2.js"></script>
+
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="row">
+      <h3>Fluxo ao redor do Açude Velho</h3>
+
+      <p align="justify">A visualização a seguir utiliza dados coletados pela equipe do LabRua, durante um dia, em 3 pontos distintos os açude velho. O dados se referem à quantidade de veículos distintos que passavam em frente a esses locais.</p>
+      <p align="justify">Cada ponto do heat map a seguir representa a quantidade do veículo indicado na hora indicada. É possível selecionar o local da observação (Em frente ao Bobs, em frente ao Monumento dos burrinhos ou em frente às estátuas de Luiz Gonzaga e Jackson do Pandeiro), ou uma mediana dos três locais. Ainda podemos ordenar verticalmente pela quantidade em determinada hora.</p>
+    </div>
+
+  <div class="row mychart1" id="chart1">
+    <div class="container">
+      <table style="width:100%">
+        <tbody>
+          <tr>
+            <td>
+              <div class="left">
+                <h5>Selecionar local:</h5>
+                <div id="controls"></div>
+              </div>
+            </td>
+            <td>
+              <div class="left">
+                <h5>Ordenar por horário:</h5>
+                <div id="selectH"></div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+    <div id="tooltip" class="hidden">
+			   <p><b id="value">0</b></p>
+		</div>
+
+  </div>
+
+  <style>
+
+  #tooltip {
+  position: absolute;
+  width: auto;
+  height: auto;
+  padding: 10px;
+  color: #ffffff;
+  background-color: #000033;
+}
+
+#tooltip.hidden {
+  display: none;
+}
+
+#tooltip p {
+  margin: 0;
+  font-family: sans-serif;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+    .mychart1 text {
+      font-size: 9pt;
+      font-family: Consolas, courier;
+      fill: #818080;
+    }
+
+    .axis path, .axis line {
+      fill: none;
+      stroke: #818080;
+      stroke-width: 2px;
+      shape-rendering: crispEdges;
+    }
+
+  </style>
+
+  <script type="text/javascript">
+    "use strict"
+
+    var tipos = ["Pedestres", "Carros", "Motos", "Ciclistas", "Onibus", "Caminhoes"],
+    horas = ["06", "07", "08", "09", 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+
+      function onlyUnique(value, index, self) {
+          return self.indexOf(value) === index;
+      }
+
+      function tipoToNum(tipo) {
+        return tipos.indexOf(tipo);
+      }
+
+      function ordenaTipos(h, dados, dimensao){
+        tipos = dados
+        .filter(e => e.hora == h && e.local == dimensao)
+         .sort(function(a, b){return a.n - b.n})
+         .map(e => e.tipo)
+         .reverse()
+      }
+
+      function pickColor(colors, n, tipo){
+        var k = 0;
+        if(n >= 20) k += 1;
+        if(n >= 50) k += 1;
+        if(n >= 70) k += 1;
+        if(n >= 100) k += 1;
+        if(n >= 250) k += 1;
+        if(n >= 400) k += 1;
+        if(n >= 550) k += 1;
+        if(n >= 800) k += 1;
+        return colors[k]
+      }
+      // Preencha aqui.
+      var alturaSVG = 400, larguraSVG = 600;
+      var	margin = {top: 50, right: 40, bottom:100, left:80}, // para descolar a vis das bordas do grafico
+          larguraVis = larguraSVG - margin.left - margin.right,
+          alturaVis = alturaSVG - margin.top - margin.bottom,
+          gridSize = Math.floor(larguraVis / 15),
+          legendElementWidth = Math.floor(larguraVis / 9),
+          buckets = 9,
+          colors = ["#fef5db","#fee6ce","#fdd0a2","#fdae6b","#fd8d3c","#f16913","#d94801","#a63603","#7f2704"];
+
+      /*
+       * Prepara onde adicionaremos a visualizacao
+       */
+
+      var grafico = d3.select('#chart1') // cria elemento <svg> com um <g> dentro
+        .append('svg')
+        .attr('viewBox', '0 0 '+(larguraVis + margin.left + margin.right)+' '+(alturaVis + margin.top + margin.bottom))
+        .attr('width', '100%')
+        .append('g') // para entender o <g> vá em x03-detalhes-svg.html
+          .attr('transform', 'translate(' +  margin.left + ',' + margin.top + ')');
+
+      var grupoLabels = grafico.selectAll(".grupoLabel")
+          .data(tipos)
+          .enter().append("text")
+            .text(function (d) { return d; })
+            .attr("x", 0)
+            .attr("y", function (d, i) { return i * gridSize; })
+            .style("text-anchor", "end")
+            .attr("transform", "translate(-6," + gridSize / 1.5 + ")")
+            .attr("class", function (d, i) { return "grupoLabel mono axis axis-grupo"; });
+
+      var timeLabels = grafico.selectAll(".timeLabel")
+                .data(horas)
+                .enter().append("text")
+                  .text(function(d) { return d; })
+                  .attr("x", function(d, i) { return i * gridSize; })
+                  .attr("y", 0)
+                  .style("text-anchor", "middle")
+                  .attr("transform", "translate(" + gridSize / 2 + ", -6)")
+                  .attr("class", function(d, i) { return "timeLabel mono axis"; });
+
+
+      var heatmapChart = function() {
+        d3.csv("https://raw.githubusercontent.com/michellymenezes/portifolio-visualizacao/master/data/tipos-fluxo-campina-lugares-sum-median.csv",
+
+        function(error, dados) {
+
+          var dimensao = "todos"
+
+          var colorScale = d3.scaleThreshold()
+              .domain([0, 20, 50, 70, 100, 250, 400, 550, 800])
+              .range([0].concat(colors));
+
+          var cards = grafico.selectAll("rect")
+              .data(dados.filter(d => d.local == "todos"));
+          ordenaTipos("06", dados, dimensao);
+
+
+      //    cards.append("title");
+
+          cards = cards.enter().append("rect")
+              .attr("x", function(d) { return (d.hora - 6) * gridSize; })
+              .attr("y", function(d) { return (tipoToNum(d.tipo)) * gridSize; })
+              .attr("class", "hour bordered")
+              .attr("width", gridSize)
+              .attr("height", gridSize)
+              .style("fill", function(d) { return pickColor(colors, d.n, d.tipo)});
+
+          /*
+           * Eventos
+           */
+          grafico.selectAll(".hour").on("mouseover", mouseDentro);
+
+          function mouseDentro(d){
+
+            d3.selectAll(".hour")
+             .style("fill",
+                     p => (p.hora === d.hora && p.tipo === d.tipo)? "#226688" : d => pickColor(colors, d.hora, d.tipo));
+
+            d3.select("#tooltip") // reparou que tem uma div escondida no html?
+  						.style("left", (d3.event.pageX - 50) + "px")
+  						.style("top", d3.event.pageY + "px")
+  						.select("#value")
+  						.text(d.n);
+  					d3.select("#tooltip").classed("hidden", false);
+          }
+
+          grafico.selectAll(".hour").on("mouseout", mouseSaiu);
+          function mouseSaiu(d){
+            d3.selectAll(".hour")
+             .style("fill",function(d) { return pickColor(colors, d.n, d.tipo)});
+
+            d3.select("#tooltip").classed("hidden", true);
+
+          }
+
+          const dataKeys = ["todos", "bobs", "burrinhos", "jackson"]
+
+          d3.select("#controls").selectAll("button.teams")
+            .data(dataKeys)
+            .enter()
+              .append("button")
+              .attr("class", "btn-default")
+               .on("click", mudaDimensao)
+               .html(d => d);
+
+
+         function mudaDimensao(dimensaoSelecionada) {
+           dimensao = dimensaoSelecionada;
+           var dadosFiltrados = dados.filter(d => d.local === dimensaoSelecionada);
+
+           cards = grafico.selectAll(".hour")
+            .data(dadosFiltrados)
+            .transition().duration(100).delay((d,i) => i * 10)
+
+            odernaPorHora()
+
+         }
+
+         d3.select("#selectH")
+         .append('select')
+         .attr('class','select')
+          .on("change", odernaPorHora)
+          .selectAll('option')
+          .data(horas).enter()
+           .append('option')
+             .text(function (d) { return d; });
+
+         function odernaPorHora() {
+           var h = d3.select('select').property('value');
+           ordenaTipos(h, dados, dimensao);
+
+           grupoLabels = grafico.selectAll(".grupoLabel")
+               .data(tipos)
+                 .text(function (d) { return d; })
+                 .attr("x", 0)
+                 .attr("y", function (d, i) { return i * gridSize; })
+
+
+           cards = grafico.selectAll(".hour")
+           .transition().duration(100).delay((d,i) => i * 10)
+               .attr("x", function(d) { return (d.hora - 6) * gridSize; })
+               .attr("y", function(d) { return (tipoToNum(d.tipo)) * gridSize; })
+               .style("fill",function(d) { return pickColor(colors, d.n, d.tipo)})
+
+
+         }
+
+          var legend = grafico.selectAll(".legend")
+              .data(colorScale.domain(), function(d) { return d; })
+              .enter().append("g")
+              .attr("class", "legend");
+
+          legend.append("rect")
+            .attr("x", function(d, i) { return legendElementWidth * i; })
+            .attr("y", alturaVis - gridSize - gridSize/2)
+            .attr("width", legendElementWidth)
+            .attr("height", gridSize / 3)
+            .style("fill", function(d, i) { return colors[i]; });
+
+          legend.append("text")
+            .attr("class", "mono")
+            .text(function(d) { return "≥ " + Math.round(d); })
+            .attr("x", function(d, i) { return legendElementWidth * i; })
+            .attr("y", alturaVis - gridSize/2);
+        });
+      };
+
+      heatmapChart();
+  </script>
+</body>
+
+</html>
