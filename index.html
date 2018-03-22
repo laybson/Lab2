@@ -161,18 +161,18 @@
 
 
       var heatmapChart = function() {
-        d3.csv("https://raw.githubusercontent.com/michellymenezes/portifolio-visualizacao/master/data/tipos-fluxo-campina-lugares-sum-median.csv",
+        d3.csv("https://raw.githubusercontent.com/laybson/Lab2/master/data/tipos-fluxo-campina-lugares-sum-median.csv",
 
         function(error, dados) {
 
-          var dimensao = "mediana"
+          var dimensao = "todos"
 
           var colorScale = d3.scaleThreshold()
               .domain([0, 20, 50, 70, 100, 250, 400, 550, 800])
               .range([0].concat(colors));
 
           var cards = grafico.selectAll("rect")
-              .data(dados.filter(d => d.local == "mediana"));
+              .data(dados.filter(d => d.local == "todos"));
           ordenaTipos("06", dados, dimensao);
 
 
@@ -214,7 +214,7 @@
 
           }
 
-          const dataKeys = ["mediana", "bobs", "burrinhos", "jackson"]
+          const dataKeys = ["todos", "bobs", "burrinhos", "jackson"]
 
           d3.select("#controls").selectAll("button.teams")
             .data(dataKeys)
